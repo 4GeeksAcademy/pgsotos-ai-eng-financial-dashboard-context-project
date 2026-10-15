@@ -12,7 +12,7 @@ Las reglas son propuestas. Se convertirán en archivos de `.agents/rules/` en la
 |---|---|---|
 | H1 | `new Date("YYYY-MM-DD")` se interpreta en UTC y luego se lee con `getMonth()` local. Con `TZ=America/Santiago`, `2025-10-01` pasa a `2025-09-30` y el movimiento cae en el mes anterior | `frontend/src/lib/financial-utils.ts`, `toYearMonthKey` |
 | H2 | La etiqueta de período dice "2024 - Full Year" y los datos van de 2025-10-02 a 2026-09-28 | `frontend/src/App.tsx`, `frontend/src/components/dashboard/dashboard-header.tsx:7` |
-| H3 | El año de cada mes depende de `date.today()`, y el mes en curso siempre cae un año atrás | `backend/app/routes.py`, `_year_for_month` |
+| H3 | El año de cada mes depende de la fecha actual: `generate_mock_movements` lee `date.today()` y se lo pasa a `_year_for_month(month, today)`. El mes en curso siempre cae un año atrás | `backend/app/routes.py`, `generate_mock_movements` (línea 97) y `_year_for_month` (línea 65) |
 | H4 | `build_metrics_facets` lanza `IndexError` si la lista de movimientos está vacía | `backend/app/routes.py`, `ordered[0]` y `ordered[-1]` |
 
 ### Arquitectura
@@ -30,7 +30,7 @@ Las reglas son propuestas. Se convertirán en archivos de `.agents/rules/` en la
 |---|---|---|
 | H6 | Hay tests que asumen que existe una combinación exacta de datos (B2B + outcome + suppliers). Cambiar la seed puede dejarlos en rojo | `backend/tests/test_routes.py`, `test_b2b_endpoint_combines_new_filters` |
 
-H1 no lo detectan los tests actuales: `financial-utils.test.ts` solo usa fechas de 2024 y no fija la zona horaria.
+H1 no lo detectan los tests actuales: el test de `computeMonthlyData` en `financial-utils.test.ts` usa solo fechas a mitad de mes (días 3, 5 y 8) y no fija la zona horaria. El único día 1 (`2024-02-01`) está en `sampleMovements`, que solo se usa en `computeKPIs`.
 
 ### Seguridad
 
@@ -84,7 +84,7 @@ Sin hallazgos concretos. No se inventaron hallazgos para estas categorías.
 |---|---|---|
 | R1 | Las fechas `YYYY-MM-DD` no se parsean con `new Date()` para extraer año o mes. Se separan con `split("-")` o se usa `getUTC*` | `financial-utils.ts`: con `TZ=America/Santiago`, `new Date("2025-10-01")` da 2025-09-30 (H1) |
 | R2 | Ningún texto de período o fecha se escribe fijo en la UI. Se deriva de los datos o del endpoint `/api/metrics/facets` | `App.tsx` pasa `"2024 - Full Year"` y los datos van de 2025-10-02 a 2026-09-28 (H2) |
-| R3 | La lógica que use la fecha actual recibe `today` como parámetro y no llama a `date.today()` dentro de la función | `_year_for_month` depende de `date.today()` y el mes en curso cae un año atrás (H3) |
+| R3 | La lógica que use la fecha actual recibe `today` como parámetro y no llama a `date.today()` dentro de la función | `generate_mock_movements` llama a `date.today()` (línea 97) y con fecha 14/10 el mes en curso cae un año atrás (H3) |
 | R4 | Toda función que acceda a `[0]` o `[-1]` de una lista maneja el caso vacío | `build_metrics_facets` usa `ordered[0]` y `ordered[-1]` y falla con lista vacía (H4) |
 
 ### Arquitectura
@@ -103,7 +103,7 @@ Sin hallazgos concretos. No se inventaron hallazgos para estas categorías.
 | ID | Regla | Hecho del repo que la respalda |
 |---|---|---|
 | R11 | Los tests construyen sus propios datos o fijan el conjunto. No dependen de que una combinación aleatoria exista | `test_b2b_endpoint_combines_new_filters` asume B2B + outcome + suppliers, y eso depende de la seed (H6) |
-| R12 | Todo cambio en el manejo de fechas del frontend va con un test ejecutado con `TZ` distinta de UTC | `financial-utils.test.ts` solo usa fechas de 2024 y no detectó H1 |
+| R12 | Todo cambio en el manejo de fechas del frontend va con un test ejecutado con `TZ` distinta de UTC | El test de `computeMonthlyData` usa solo fechas a mitad de mes y no detectó H1; `2024-02-01` solo cambia de mes en `America/Santiago` y está en `sampleMovements`, que solo usa `computeKPIs` |
 
 ### Seguridad
 
@@ -127,6 +127,6 @@ Sin hallazgos concretos. No se inventaron hallazgos para estas categorías.
 ### Notas
 
 - Son 16 reglas para 13 hallazgos. H5 genera R5 y R6, y H12 genera R8 y R9.
-- R2, R3, R9 y R13 dependen de corregir primero el código existente. El resto aplica a código nuevo.
+- R1, R2, R3, R4, R5, R6, R8, R9, R10, R11, R12, R13, R14 y R16 describen código que hoy no cumple la regla (deuda por corregir). R7 y R15 son precauciones que el código actual no incumple. El resto aplica además a código nuevo.
 - Naming y Documentation no tienen reglas porque no tienen hallazgos.
 - La Fase 3 convertirá estas reglas en archivos de `.agents/rules/`.
