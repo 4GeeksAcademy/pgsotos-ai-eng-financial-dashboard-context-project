@@ -1,6 +1,6 @@
 import { useId } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Skeleton } from '@/components/ui/skeleton'
+import { ChartCardSkeleton } from '@/components/dashboard/chart-card-skeleton'
 import { type MonthlyDataPoint } from '@/lib/financial-types'
 import { formatCurrency } from '@/lib/financial-utils'
 import {
@@ -51,19 +51,7 @@ export function IncomeOutcomeChart({ data, loading }: IncomeOutcomeChartProps) {
   const titleId = useId()
   const tableId = useId()
 
-  if (loading) {
-    return (
-      <Card className="border-border/60">
-        <CardHeader className="pb-4">
-          <Skeleton className="h-5 w-52" />
-          <Skeleton className="h-3 w-64 mt-1" />
-        </CardHeader>
-        <CardContent>
-          <Skeleton className="h-[280px] w-full rounded-lg" />
-        </CardContent>
-      </Card>
-    )
-  }
+  if (loading) return <ChartCardSkeleton />
 
   const hasData = data.some((d) => d.income > 0 || d.outcome > 0)
 

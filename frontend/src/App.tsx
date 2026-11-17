@@ -1,8 +1,7 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { DashboardHeader } from "@/components/dashboard/dashboard-header";
 import { KPIRow } from "@/components/dashboard/kpi-row";
-import { IncomeOutcomeChart } from "@/components/dashboard/income-outcome-chart";
-import { ProfitPercentChart } from "@/components/dashboard/profit-percent-chart";
+import { ChartCardSkeleton } from "@/components/dashboard/chart-card-skeleton";
 import {
   type FinancialMovement,
   type KPIMetrics,
@@ -10,10 +9,23 @@ import {
 } from "@/lib/financial-types";
 import { computeKPIs, computeMonthlyData } from "@/lib/financial-utils";
 
+const IncomeOutcomeChart = lazy(() =>
+  import("@/components/dashboard/income-outcome-chart").then((m) => ({
+    default: m.IncomeOutcomeChart,
+  })),
+);
+const ProfitPercentChart = lazy(() =>
+  import("@/components/dashboard/profit-percent-chart").then((m) => ({
+    default: m.ProfitPercentChart,
+  })),
+);
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
 
-async function fetchFinancialData(): Promise<FinancialMovement[]> {
-  const response = await fetch(`${API_BASE_URL}/api/metrics`);
+async function fetchFinancialData(
+  signal?: AbortSignal,
+): Promise<FinancialMovement[]> {
+  const response = await fetch(`${API_BASE_URL}/api/metrics`, { signal });
   if (!response.ok) {
     throw new Error(`Failed to fetch financial data: ${response.status}`);
   }
@@ -27,19 +39,24 @@ function App() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchFinancialData()
+    const controller = new AbortController();
+
+    fetchFinancialData(controller.signal)
       .then((movements) => {
         setMetrics(computeKPIs(movements));
         setMonthlyData(computeMonthlyData(movements));
+        setLoading(false);
       })
-      .catch(() => {
+      .catch((err: unknown) => {
+        if (controller.signal.aborted) return;
+        console.error(err);
         setError(
           "No se pudo cargar la informacion financiera. Revisa la API de backend.",
         );
-      })
-      .finally(() => {
         setLoading(false);
       });
+
+    return () => controller.abort();
   }, []);
 
   return (
@@ -68,8 +85,12 @@ function App() {
               aria-busy={loading}
               className="grid grid-cols-1 gap-4 xl:grid-cols-2"
             >
-              <IncomeOutcomeChart data={monthlyData} loading={loading} />
-              <ProfitPercentChart data={monthlyData} loading={loading} />
+              <Suspense fallback={<ChartCardSkeleton />}>
+                <IncomeOutcomeChart data={monthlyData} loading={loading} />
+              </Suspense>
+              <Suspense fallback={<ChartCardSkeleton />}>
+                <ProfitPercentChart data={monthlyData} loading={loading} />
+              </Suspense>
             </section>
           </main>
         </div>
