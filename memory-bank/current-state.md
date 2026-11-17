@@ -41,6 +41,19 @@ Las reglas derivadas están en `.agents/rules/`. 14 de las 16 reglas (todas meno
 
 El orden y el alcance de estos puntos los define el usuario.
 
+## Skills de agentes (`feature/agent-skills`)
+
+### Skill del ecosistema: `webapp-testing`
+Busqué con `npx skills find` en `testing` y `seo`, y elegí `anthropics/skills@webapp-testing`.
+
+**Por qué esta:** hasta ahora yo había revisado accesibilidad y rendimiento solo leyendo código. Con esta skill pude abrir el dashboard en un navegador real con Playwright y comprobar lo que pide el enunciado: foco con teclado, contraste, landmarks y errores de consola. Es la única de las que vi que guía ese trabajo y encaja con un frontend en Vite.
+
+**Por qué no otras:** el resto de `testing` era de otros stacks o pedía herramientas extra, y `seo` no aporta a un dashboard interno sin páginas públicas.
+
+**Cómo la usé:** antes de aplicarla leí su `SKILL.md` y su script, que solo ejecuta los comandos que le paso. Levanté el backend y el frontend en local y corrí un script headless con la API normal, lenta y caída.
+
+**Qué encontré:** casi todo pasó: estructura de la página, nombre de los gráficos, foco visible, contraste mínimo de 5,18:1, movimiento reducido y mensaje de error. Lo que falló fue cosa mía: la tabla oculta de los gráficos añadía scroll en blanco bajo el dashboard, y lo corregí. Dejé sin corregir, por salirse del checklist, tres cosas: el `svg` de cada gráfico no tiene nombre accesible, el skeleton mide 8 px menos que la tarjeta real y el `body` tiene fondo claro. No lo probé con un lector de pantalla real.
+
 ## Historial
 - Fase 1: verificación del resumen del proyecto (`../verification.md`).
 - Fase 2: hallazgos y reglas propuestas (`../findings.md`).
