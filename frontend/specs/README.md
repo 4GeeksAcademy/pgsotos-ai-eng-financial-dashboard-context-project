@@ -7,7 +7,7 @@ Contrato entre el frontend y la API del backend para tres funcionalidades: filtr
 | Archivo | Contenido |
 |---|---|
 | `api-exploration.md` | Evidencia de la API y los desajustes `D1` a `D11` entre el brief del PM y el backend. |
-| `api-types.ts` | Tipos de respuesta: `FacetsResponse`, `AlertEntry`, `AlertsResponse`, `CategoryEntry`, `TopCategoriesResponse`. |
+| `api-types.ts` | Tipos de respuesta: `FinancialMovement`, `MetricsResponse`, `FacetsResponse`, `AlertEntry`, `AlertsResponse`, `CategoryEntry`, `TopCategoriesResponse`; y los tipos base `OperationType`, `BusinessType`, `Category`. |
 | `param-types.ts` | Tipos de parámetros: `DateRangeFilter`, `AlertsParams`, `TopCategoriesParams`, `GroupBy`. |
 | `components.md` | Componentes, props y renderizado condicional. |
 | `README.md` | Este contrato. |
@@ -17,10 +17,13 @@ Contrato entre el frontend y la API del backend para tres funcionalidades: filtr
 - **Base:** `VITE_API_BASE_URL` (vacío en desarrollo: el proxy de Vite reenvía `/api`). Documentación viva en `http://localhost:8000/docs`.
 - **Fechas:** cadenas `YYYY-MM-DD`. Los límites son inclusivos (`>= start_date` y `<= end_date`).
 - **Parámetros vacíos:** no se envían. `start_date=` vacío provoca un 422.
-- **Error de validación (HTTP 422):** `{ "detail": [{ "type", "loc", "msg", "input" }] }`. Ejemplo: `threshold=-1` da `loc: ["query", "threshold"]` y `msg: "Input should be greater than or equal to 0"`.
+- **Error de validación (HTTP 422):** `{ "detail": [...] }`, una lista donde cada elemento trae `type`, `loc`, `msg` e `input`; pueden aparecer además `ctx` y `url` como claves opcionales (no verificado). Ejemplo: `threshold=-1` da `loc: ["query", "threshold"]` y `msg: "Input should be greater than or equal to 0"`.
 - **Sin datos:** los endpoints de lista responden 200 con `[]`. Nunca 404.
 - **Datos de ejemplo:** el backend genera los datos con `date.today()` (hallazgo H3), así que los rangos y los totales cambian con la fecha. Los números de ejemplo de este documento corresponden al 2026-11-16 y no deben copiarse a pruebas.
-- **Lectura de errores:** si `!response.ok`, lanzar un error con el código de estado y registrar el original con `console.error` antes de mostrar el mensaje.
+- **Lectura de errores:** si `!response.ok`, lanzar un error con el código de estado y registrar el original con `console.error` antes de mostrar el mensaje. El mensaje genérico está definido en las Convenciones de `components.md`.
+- **Formato numérico (en-US):** `$18,254` (`formatCurrency`, 0 decimales), `+149.7 %`, razón `1.8303`. Como el dinero se redondea a 0 decimales, las filas mostradas pueden no sumar exactamente el total del pie.
+- **Respuestas obsoletas:** un token de petición por panel y por línea de negocio; al lanzar otra petición se aborta la anterior con `AbortController` y se descarta cualquier respuesta con token antiguo. Al desmontar se aborta y se ignora el resultado.
+- **Estado de las facetas (`facetsStatus`: `"loading" | "ready" | "error"`):** `App` lo pasa como prop a `DateRangeFilterBar`, `BusinessComparisonPage` y `DashboardHeader`. Con `"error"`: los límites de fecha quedan en `null`, la vista comparativa usa las líneas fijas `["B2B", "B2C"]`, `DateRangeFilterBar` muestra "Rango disponible no cargado" y `DashboardHeader` muestra "Todos los datos" (con `"loading"` muestra `Skeleton`).
 
 ## Funcionalidad 1: filtro de rango de fechas
 
@@ -29,7 +32,7 @@ Contrato entre el frontend y la API del backend para tres funcionalidades: filtr
 | Endpoint | Uso | Tipos |
 |---|---|---|
 | `GET /api/metrics/facets` | Límites `min_date` y `max_date` y texto de referencia. Una sola vez al montar. | respuesta `FacetsResponse` |
-| `GET /api/metrics` | Movimientos del dashboard principal. | parámetros `DateRangeFilter` (más `category` y `operation_type`, que esta funcionalidad no usa) |
+| `GET /api/metrics` | Movimientos del dashboard principal. | parámetros `DateRangeFilter` (más `category` y `operation_type`, que esta funcionalidad no usa); respuesta `MetricsResponse` (lista de `FinancialMovement`) |
 
 **Parámetros (`DateRangeFilter`)**
 
@@ -43,7 +46,8 @@ Contrato entre el frontend y la API del backend para tres funcionalidades: filtr
 1. **Solo una fecha.** El rango queda abierto: solo `start_date` va desde esa fecha hasta `max_date`; solo `end_date` va desde `min_date` hasta esa fecha. No es un error. La UI muestra el período con el lado abierto completado con el límite de `FacetsResponse`.
 2. **Inicio posterior al fin.** La API responde 200 con `[]` y no avisa. La UI lo bloquea con el error "La fecha de inicio no puede ser posterior a la de fin" y mantiene el último rango válido.
 3. **Rango dentro de los límites pero sin movimientos.** La API responde 200 con `[]`. La UI muestra `EmptyState` "Sin movimientos en este rango" y "—" en cada KPI.
-4. **Fecha con formato inválido** (por ejemplo `2026-13-45`). La API responde 422. Los inputs `type="date"` lo previenen; si ocurre, se muestra el mensaje de error genérico.
+4. **Fecha con formato inválido** (por ejemplo `2026-13-45`). La API responde 422. Los inputs `type="date"` lo previenen; si ocurre, se muestra el mensaje de error genérico (ver Convenciones de `components.md`).
+5. **Borrador local.** `DateRangeFilterBar` guarda las fechas escritas como borrador y llama a `onChange` solo con un rango válido. El error en línea se borra cuando el borrador vuelve a ser válido o al pulsar "Limpiar", que vacía el borrador y el rango aplicado.
 
 ## Funcionalidad 2: tabla de alertas de anomalías
 
@@ -67,16 +71,16 @@ Contrato entre el frontend y la API del backend para tres funcionalidades: filtr
 | `period` | `string` | `YYYY-MM` con `group_by=month`. |
 | `outcome_total` | `number` | Gasto del período. |
 | `baseline_average` | `number` | Promedio del gasto de **todos** los períodos anteriores dentro del rango (no una media móvil de 3). |
-| `increase_ratio` | `number` | `(outcome_total - baseline_average) / baseline_average`, 4 decimales. La UI lo muestra como porcentaje (por 100). |
+| `increase_ratio` | `number` | `(outcome_total - baseline_average) / baseline_average`, 4 decimales. La UI lo muestra como porcentaje (por 100, 1 decimal), por ejemplo `1.4968` se muestra `+149.7 %`. |
 
 Un período solo genera alerta si hay historial anterior, `baseline_average > 0` y `increase_ratio` es **mayor** que `threshold`.
 
 **Casos límite**
 
 1. **Sin anomalías.** La API responde 200 con `[]` (por ejemplo `threshold=5`). La UI muestra `EmptyState` "No se detectaron anomalías" con el umbral y el rango; la tabla no desaparece sin mensaje.
-2. **Umbral fuera de rango.** Con `threshold=-1` la API responde 422; con `threshold=5` acepta el valor. La UI solo deja aplicar de `0.01` a `1.0` y conserva el último valor válido.
+2. **Umbral fuera de rango.** Con `threshold=-1` la API responde 422; con `threshold=5` acepta el valor. La UI solo deja aplicar de `0.01` a `1.0` y conserva el último valor válido. El input guarda un borrador de texto; al salir del campo con un valor inválido, el texto vuelve al umbral aplicado. El umbral aplicado se muestra como `Math.round(threshold * 100)` % (`0.3` muestra `30 %`).
 3. **El primer período nunca alerta.** No tiene historial. Con un rango corto hay pocas o ninguna alerta. La UI lo indica con una nota fija bajo la tabla.
-4. **Meses incompletos.** Si el rango no empieza el día 1 ni termina el último día del mes, el primer y el último mes suman solo parte del mes. Ejemplo (datos del 2026-11-16, `start_date=2026-03-15`, `end_date=2026-06-10`, `threshold=0.01`): marzo suma 18 254,17 frente a 51 665,68 de abril, y abril sale como alerta con `increase_ratio` 1,8303 por un promedio inflado a la baja. La UI debe avisar cuando el rango incluye meses incompletos.
+4. **Meses incompletos.** Si `start_date` no es día 1 o `end_date` no es el último día de su mes, el primer o el último mes suman solo parte del mes (un lado abierto cuenta como completo). Ejemplo (datos del 2026-11-16, `start_date=2026-03-15`, `end_date=2026-06-10`, `threshold=0.01`): marzo suma 18,254.17 frente a 51,665.68 de abril, y abril sale como alerta con `increase_ratio` 1.8303 por un promedio inflado a la baja. La UI muestra un aviso fijo bajo la tabla (con o sin filas) cuando se cumple esa condición.
 
 ## Funcionalidad 3: comparativa B2B vs B2C
 
@@ -112,8 +116,9 @@ Un período solo genera alerta si hay historial anterior, `baseline_average > 0`
 
 **Casos límite**
 
-1. **Menos de 5 categorías.** Con ingresos solo existen `sales` y `others`: máximo 2 filas por línea (con `outcome` hay 4). La UI muestra solo las filas existentes, sin rellenar hasta 5.
+1. **Menos de 5 categorías.** Con ingresos solo existen `sales` y `others`: máximo 2 filas por línea (con `outcome` hay 4). La UI muestra todas las filas recibidas, sin rellenar hasta 5 y sin recortar.
 2. **Una línea sin ingresos en el rango.** La API responde 200 con `[]`. Esa tabla muestra `EmptyState` "Sin ingresos de {B2B|B2C} en este rango" y total `$0`, sin columna de porcentaje (no se divide entre 0). El gráfico se dibuja con esa barra en 0.
 3. **Ambas líneas sin ingresos.** No se dibuja el gráfico: `EmptyState` "Sin ingresos para comparar en este rango".
 4. **Falla una de las dos llamadas.** La sección que falló muestra su error y el gráfico no se dibuja (muestra "No hay datos de ambas líneas para comparar"). La otra sección sigue visible.
 5. **Las facetas no filtran por línea.** `FacetsResponse.categories` es global: no sirve para saber qué categorías tiene cada línea. Las filas salen siempre de la respuesta de `categories/top`.
+6. **Fallan las facetas (`facetsStatus === "error"`).** La vista comparativa usa las líneas fijas `["B2B", "B2C"]` y lanza las dos peticiones igual; los límites de fecha quedan en `null`, así que `DateRangeFilterBar` no pone `min`/`max` y muestra "Rango disponible no cargado".

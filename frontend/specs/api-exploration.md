@@ -32,9 +32,9 @@ Patrón de fetch existente en el frontend: `fetch("/api/...")` a través del pro
 |---|---|---|---|
 | D1 | Umbral de alerta entre `0.01` y `1.0` | `threshold` solo exige `>= 0`; sin máximo. `5` devuelve 200 con `[]`; `-1` devuelve 422 | El rango `0.01–1.0` lo debe imponer la UI |
 | D2 | "Media móvil de los 3 períodos anteriores" | `baseline_average` es el promedio de **todos** los períodos anteriores dentro del rango (`detect_outcome_alerts`) | La columna no es una media móvil de 3 |
-| D3 | "Incremento porcentual" | `increase_ratio` es una razón (`1.4968` = 149,68 %) | La UI debe multiplicar por 100 |
+| D3 | "Incremento porcentual" | `increase_ratio` es una razón (`1.4968` = 149.68 %, ejemplo con datos del 2026-11-16) | La UI debe multiplicar por 100 |
 | D4 | Nada sobre agrupar por período | `group_by` existe (def. `month`). Los períodos son `YYYY-MM`, `YYYY-Www` o `YYYY-MM-DD` | La spec debe fijar el valor de `group_by` |
-| D5 | Alertas respetan el rango de fechas | Cierto, pero el primer período del rango nunca alerta y el promedio se recalcula solo con el rango | Con una sola fecha o rango corto hay menos alertas (con `start_date=2026-03-01` hay 1) |
+| D5 | Alertas respetan el rango de fechas | Cierto, pero el primer período del rango nunca alerta y el promedio se recalcula solo con el rango | Con una sola fecha o rango corto hay menos alertas (con `start_date=2026-03-01` hay 1, datos del 2026-11-16) |
 | D6 | "5 categorías de ingreso" por línea de negocio | Con `operation_type=income` solo existen `sales` y `others`: **2 filas** en B2B y en B2C. Con `outcome` hay 4 | Nunca habrá 5 filas |
 | D7 | Tabla de **ingresos** | `categories/top` usa `operation_type=outcome` por defecto | La UI debe enviar `operation_type=income` explícito |
 | D8 | "Porcentaje sobre el total del grupo" | La respuesta solo trae `total_amount`; no hay porcentaje ni total del grupo | El porcentaje se calcula en el cliente con la suma de `total_amount` |

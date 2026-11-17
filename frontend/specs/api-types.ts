@@ -19,6 +19,23 @@ export type Category =
   | "administrative"
   | "others";
 
+/** One money movement, as returned by `GET /api/metrics` (and `/api/metrics/b2b`, `/api/metrics/b2c`). */
+export interface FinancialMovement {
+  /** Date of the movement. Format `YYYY-MM-DD`. */
+  create_date: string;
+  /** Amount of the movement, always positive. The direction is given by `operation_type`. */
+  amount: number;
+  /** Whether the movement is money coming in or going out. */
+  operation_type: OperationType;
+  /** Category of the movement. Income only uses `sales` and `others`. */
+  category: Category;
+  /** Business line that owns the movement. */
+  business_type: BusinessType;
+}
+
+/** Response of `GET /api/metrics`. Sorted by `create_date` ascending. An empty array means no movements for the current filters (HTTP 200). */
+export type MetricsResponse = FinancialMovement[];
+
 /**
  * Response of `GET /api/metrics/facets`.
  * Values are global: they do not change with business line or date filters.
