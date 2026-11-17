@@ -100,7 +100,8 @@ export function ProfitPercentChart({ data, loading }: ProfitPercentChartProps) {
               />
             </LineChart>
           </ResponsiveContainer>
-          <table id={tableId} className="sr-only">
+          <div className="sr-only">
+          <table id={tableId}>
             <caption>Monthly profit margin percentage</caption>
             <thead>
               <tr>
@@ -117,6 +118,7 @@ export function ProfitPercentChart({ data, loading }: ProfitPercentChartProps) {
               ))}
             </tbody>
           </table>
+          </div>
           </figure>
         )}
       </CardContent>

@@ -110,7 +110,8 @@ export function IncomeOutcomeChart({ data, loading }: IncomeOutcomeChartProps) {
               />
             </LineChart>
           </ResponsiveContainer>
-          <table id={tableId} className="sr-only">
+          <div className="sr-only">
+          <table id={tableId}>
             <caption>Monthly income and outcome</caption>
             <thead>
               <tr>
@@ -129,6 +130,7 @@ export function IncomeOutcomeChart({ data, loading }: IncomeOutcomeChartProps) {
               ))}
             </tbody>
           </table>
+          </div>
           </figure>
         )}
       </CardContent>
