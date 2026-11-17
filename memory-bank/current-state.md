@@ -1,16 +1,17 @@
 # Estado actual
 
-Última actualización: 2026-10-15.
+Última actualización: 2026-11-17.
 
 ## Qué funciona (comprobado)
 - Los 15 tests del backend pasan (`pytest`, en un venv temporal con Python 3.14; Docker usa 3.13). Ver `../verification.md`.
 - Los 10 endpoints existen y devuelven datos deterministas con seed 42.
 - El código define el flujo navegador → proxy de Vite → backend (`App.tsx`, `vite.config.ts`).
+- Frontend en `feature/agent-skills` (Node 24): `npm run lint`, `npx tsc -b`, `npm test` (5 tests) y `npm run build` terminan con exit 0 y el build no da advertencias. Esta es la línea base que usa `.skills/dashboard-premerge-check`.
 
 ## Qué no está comprobado
-- `npm test`, `npm run lint` y `npm run build` del frontend: nunca se ejecutaron (el frontend no tiene `node_modules`). Existen 5 tests en `frontend/src/lib/financial-utils.test.ts`.
 - `docker compose up --build` de punta a punta.
 - Que un agente pueda seguir cada regla de `.agents/rules/` sin ayuda.
+- El dashboard con un lector de pantalla real (solo se comprobó en Chromium headless).
 
 ## Gaps conocidos
 Detalle, ubicación y evidencia en [`../findings.md`](../findings.md):
@@ -26,7 +27,7 @@ Detalle, ubicación y evidencia en [`../findings.md`](../findings.md):
 | H7 | Contrato `FinancialMovement` duplicado en Python y TypeScript |
 | H8 | Dependencias sin fijar y `npm install` en Docker |
 | H9 | Tema oscuro fijo; el modo claro nunca se usa |
-| H10 | El `.catch` de `App.tsx` descarta el error original |
+| H10 | El `.catch` de `App.tsx` descartaba el error original. Mitigado en `feature/agent-skills`: ahora lo registra con `console.error` (`7a5b0d1`); el mensaje que ve el usuario no cambia |
 | H11 | CORS con `*` y credenciales (refleja cualquier origen) |
 | H12 | `mock-data.ts` sin uso; el frontend usa 1 de 10 endpoints |
 | H13 | `/b2b` y `/b2c` duplicados |
@@ -37,11 +38,19 @@ Las reglas derivadas están en `.agents/rules/`. 14 de las 16 reglas (todas meno
 **Decisión del usuario pendiente. No hay hoja de ruta en el repo ni un orden acordado.** Solo constan estos pendientes documentados:
 - Ajustar y validar las reglas hasta que apliquen al flujo real del proyecto (`README.es.md`, paso 5, línea 26).
 - Corregir el código que incumple las reglas (deuda marcada en `.agents/rules/`).
-- Ejecutar la verificación pendiente del frontend y de Docker.
+- Ejecutar la verificación pendiente de Docker.
 
 El orden y el alcance de estos puntos los define el usuario.
 
 ## Skills de agentes (`feature/agent-skills`)
+
+### Skills asignadas
+**`accessibility`** (`d25b37d`): los dos gráficos tienen nombre y una tabla de datos oculta para lectores de pantalla, el error se anuncia con `role="alert"`, los títulos son `h2`, la cabecera quedó fuera de `main`, el foco tiene contorno visible y se respeta `prefers-reduced-motion`. Lo verifiqué con `lint`, `tsc`, tests y build, y en el navegador. Una vez falló: la tabla oculta añadía scroll (`2bebfd8`).
+
+**`vercel-react-best-practices`** (`7a5b0d1`): esta skill está pensada para Next.js, así que apliqué solo lo que vale en Vite: gráficos con `React.lazy` y `Suspense`, `AbortController` en la carga, un único formateador de moneda y título y descripción en `index.html`. El bundle principal bajó de 585,60 kB a 187,66 kB y el build ya no da advertencias. Dejé fuera lo que exige Next.js (`next/image`, `next/font`, renderizado en servidor).
+
+El `console.error` que añadí en el `.catch` de `App.tsx` mitiga la deuda H10 (ver tabla).
+
 
 ### Skill del ecosistema: `webapp-testing`
 Busqué con `npx skills find` en `testing` y `seo`, y elegí `anthropics/skills@webapp-testing`.
@@ -54,8 +63,14 @@ Busqué con `npx skills find` en `testing` y `seo`, y elegí `anthropics/skills@
 
 **Qué encontré:** casi todo pasó: estructura de la página, nombre de los gráficos, foco visible, contraste mínimo de 5,18:1, movimiento reducido y mensaje de error. Lo que falló fue cosa mía: la tabla oculta de los gráficos añadía scroll en blanco bajo el dashboard, y lo corregí. Dejé sin corregir, por salirse del checklist, tres cosas: el `svg` de cada gráfico no tiene nombre accesible, el skeleton mide 8 px menos que la tarjeta real y el `body` tiene fondo claro. No lo probé con un lector de pantalla real.
 
+### Skill interna: `dashboard-premerge-check`
+Está en `.skills/dashboard-premerge-check/` (`9e00fed`). Decide si una rama puede ir a PR: compara `lint`, `tsc -b`, tests y build con la línea base, revisa el diff contra las reglas de este repo (R7, R12, R14, R15, deuda H1–H13 y el caso de `sr-only`) y valida la convención de commits. Solo informa: no edita, no hace commit ni push.
+
+La probé con un agente revisor sobre esta rama. Los comandos pasaron y detectó algo real: la mejora de H10 no estaba declarada en su commit. Con sus críticas afiné la skill; ahora esa deuda se declara en el commit, el PR o este archivo, y el veredicto tiene un tercer estado, `LISTO CON OBSERVACIONES`.
+
 ## Historial
 - Fase 1: verificación del resumen del proyecto (`../verification.md`).
 - Fase 2: hallazgos y reglas propuestas (`../findings.md`).
 - Fase 3: reglas del repositorio (`../.agents/rules/`).
 - Fase 4: esta memoria (`memory-bank/`).
+- Proyecto de skills: dos skills asignadas aplicadas, `webapp-testing` del ecosistema y una skill interna en `.skills/`.
