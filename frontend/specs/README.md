@@ -10,6 +10,7 @@ Contrato entre el frontend y la API del backend para tres funcionalidades: filtr
 | `api-types.ts` | Tipos de respuesta: `FinancialMovement`, `MetricsResponse`, `FacetsResponse`, `AlertEntry`, `AlertsResponse`, `CategoryEntry`, `TopCategoriesResponse`; y los tipos base `OperationType`, `BusinessType`, `Category`. |
 | `param-types.ts` | Tipos de parámetros: `DateRangeFilter`, `AlertsParams`, `TopCategoriesParams`, `GroupBy`. |
 | `components.md` | Componentes, props y renderizado condicional. |
+| `tsconfig.json` | Configuración estricta que compila solo `*.ts` de esta carpeta. Verificación: `cd frontend/specs && npx tsc --noEmit` (sin salida y exit 0 si compila). |
 | `README.md` | Este contrato. |
 
 ## Reglas generales de la API
