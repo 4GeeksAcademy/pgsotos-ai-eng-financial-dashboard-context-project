@@ -1,3 +1,4 @@
+import { useId } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { type MonthlyDataPoint } from '@/lib/financial-types'
@@ -47,6 +48,9 @@ function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
 }
 
 export function IncomeOutcomeChart({ data, loading }: IncomeOutcomeChartProps) {
+  const titleId = useId()
+  const tableId = useId()
+
   if (loading) {
     return (
       <Card className="border-border/60">
@@ -66,7 +70,7 @@ export function IncomeOutcomeChart({ data, loading }: IncomeOutcomeChartProps) {
   return (
     <Card className="border-border/60">
       <CardHeader className="pb-4">
-        <CardTitle className="text-base font-semibold">Income vs. Outcome</CardTitle>
+        <CardTitle id={titleId} className="text-base font-semibold">Income vs. Outcome</CardTitle>
         <CardDescription>Monthly revenue and expenditure evolution</CardDescription>
       </CardHeader>
       <CardContent>
@@ -75,6 +79,7 @@ export function IncomeOutcomeChart({ data, loading }: IncomeOutcomeChartProps) {
             No data available to display
           </div>
         ) : (
+          <figure aria-labelledby={titleId} aria-describedby={tableId}>
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={data} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" strokeOpacity={0.6} />
@@ -117,6 +122,26 @@ export function IncomeOutcomeChart({ data, loading }: IncomeOutcomeChartProps) {
               />
             </LineChart>
           </ResponsiveContainer>
+          <table id={tableId} className="sr-only">
+            <caption>Monthly income and outcome</caption>
+            <thead>
+              <tr>
+                <th scope="col">Month</th>
+                <th scope="col">Income</th>
+                <th scope="col">Outcome</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.map((d) => (
+                <tr key={d.month}>
+                  <th scope="row">{d.month}</th>
+                  <td>{formatCurrency(d.income)}</td>
+                  <td>{formatCurrency(d.outcome)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          </figure>
         )}
       </CardContent>
     </Card>
