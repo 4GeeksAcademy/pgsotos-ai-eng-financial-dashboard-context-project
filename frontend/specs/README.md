@@ -11,6 +11,7 @@ Contrato entre el frontend y la API del backend para tres funcionalidades: filtr
 | `param-types.ts` | Tipos de parámetros: `DateRangeFilter`, `AlertsParams`, `TopCategoriesParams`, `GroupBy`. |
 | `components.md` | Componentes, props y renderizado condicional. |
 | `tsconfig.json` | Configuración estricta que compila solo `*.ts` de esta carpeta. Verificación: `cd frontend/specs && npx tsc --noEmit` (sin salida y exit 0 si compila). |
+| `verification.md` | Evidencia de la verificación contra el backend y los 12 criterios de aceptación, con los comandos para repetirla. |
 | `README.md` | Este contrato. |
 
 ## Reglas generales de la API
@@ -18,7 +19,7 @@ Contrato entre el frontend y la API del backend para tres funcionalidades: filtr
 - **Base:** `VITE_API_BASE_URL` (vacío en desarrollo: el proxy de Vite reenvía `/api`). Documentación viva en `http://localhost:8000/docs`.
 - **Fechas:** cadenas `YYYY-MM-DD`. Los límites son inclusivos (`>= start_date` y `<= end_date`).
 - **Parámetros vacíos:** no se envían. `start_date=` vacío provoca un 422.
-- **Error de validación (HTTP 422):** `{ "detail": [...] }`, una lista donde cada elemento trae `type`, `loc`, `msg` e `input`; pueden aparecer además `ctx` y `url` como claves opcionales (no verificado). Ejemplo: `threshold=-1` da `loc: ["query", "threshold"]` y `msg: "Input should be greater than or equal to 0"`.
+- **Error de validación (HTTP 422):** `{ "detail": [...] }`, una lista donde cada elemento trae `type`, `loc`, `msg`, `input` y `ctx` (verificado con FastAPI 0.163.1; `input` y `ctx` son opcionales en el esquema OpenAPI). Ejemplo real de `threshold=-1`: `{ "type": "greater_than_equal", "loc": ["query", "threshold"], "msg": "Input should be greater than or equal to 0", "input": "-1", "ctx": { "ge": 0.0 } }`.
 - **Sin datos:** los endpoints de lista responden 200 con `[]`. Nunca 404.
 - **Datos de ejemplo:** el backend genera los datos con `date.today()` (hallazgo H3), así que los rangos y los totales cambian con la fecha. Los números de ejemplo de este documento corresponden al 2026-11-16 y no deben copiarse a pruebas.
 - **Lectura de errores:** si `!response.ok`, lanzar un error con el código de estado y registrar el original con `console.error` antes de mostrar el mensaje. El mensaje genérico está definido en las Convenciones de `components.md`.
